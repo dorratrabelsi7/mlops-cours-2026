@@ -1,6 +1,6 @@
 # Rapport comparatif — Kubeflow Pipelines vs Airflow (Lab 2)
 
-**Binôme :** TON_PARTENAIRE · **Date :** 10/11/2026 · **Machine :** Intel Core i7-13620H, 7,6 Go de RAM, Windows + WSL2 (Ubuntu) ·
+**Binôme :** Dorra Trabelsi · **Date :** 10/11/2026 · **Machine :** Intel Core i7-13620H, 7,6 Go de RAM, Windows + WSL2 (Ubuntu) ·
 **Dataset :** german-credit
 
 ## 1. Contexte
