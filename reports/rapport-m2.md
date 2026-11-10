@@ -1,6 +1,6 @@
 # Rapport comparatif — Kubeflow Pipelines vs Airflow (Lab 2)
 
-**Binôme :** [À MESURER] · **Date :** 10/11/2026 · **Machine :** [À MESURER : CPU], 7,6 Go de RAM, Windows + WSL2 (Ubuntu) ·
+**Binôme :** TON_PARTENAIRE · **Date :** 10/11/2026 · **Machine :** Intel Core i7-13620H, 7,6 Go de RAM, Windows + WSL2 (Ubuntu) ·
 **Dataset :** german-credit
 
 ## 1. Contexte
@@ -11,13 +11,13 @@ Nous avons migré le pipeline DVC du Lab 1 (scoring de crédit, 1000 lignes) ver
 
 | Mesure | KFP | Airflow |
 |---|---|---|
-| Installation de zéro (min) | [À MESURER] | [À MESURER] |
-| Temps jusqu'au premier run réussi (min) | [À MESURER] | [À MESURER] |
-| Durée d'un run complet (min) | [À MESURER] | [À MESURER] |
-| Relance avec les mêmes paramètres (min) | [À MESURER] | [À MESURER] |
-| Hot-reload : modifier un step et voir le résultat (min) | [À MESURER] | [À MESURER] |
+| Installation de zéro (min) | non mesuré | non mesuré |
+| Temps jusqu'au premier run réussi (min) | non mesuré | non mesuré |
+| Durée d'un run complet (min) | non mesuré | non mesuré |
+| Relance avec les mêmes paramètres (min) | non mesuré | non mesuré |
+| Hot-reload : modifier un step et voir le résultat (min) | non mesuré | non mesuré |
 | Lignes de code propres à l'orchestrateur | 282 (components.py 193 + scoring_pipeline.py 89) | 69 (scoring_dag.py) |
-| Mémoire consommée par l'outil (Go, `docker stats`) | ≈ 4,3 (cluster kind entier : KFP + MLflow + S3) | [À MESURER] |
+| Mémoire consommée par l'outil (Go, `docker stats`) | ≈ 4,3 (cluster kind entier : KFP + MLflow + S3) | non mesuré |
 
 ## 3. Analyse qualitative
 
