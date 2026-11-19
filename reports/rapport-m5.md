@@ -27,14 +27,14 @@ Point de saturation : sur les trois premiers runs, le débit n'augmente que de 3
 
 ## 3. Scale-up observé
 
-Source : événements Kubernetes du namespace `scoring` (heure UTC). Le CPU n'a pas pu être mesuré (metrics-server indisponible : `Metrics API not available`).
+Source : événements Kubernetes du namespace `scoring` (heure UTC). Les trois runs d'origine ont eu lieu sans metrics-server (`Metrics API not available`) : leur CPU n'a pas été mesuré. Il l'a été ensuite lors d'un run de contrôle équivalent au run à chaud (500 utilisateurs, 90 s, révision 2.0.0, 5 pods : 182 009 requêtes, 2075 req/s, P50 21 ms, P99 310 ms, 0 erreur), avec un relevé `kubectl top` toutes les 10 s.
 
 | Run | Pods (max observé) | CPU moyen par pod | Temps pour atteindre ce nombre de pods |
 |---|---|---|---|
-| run_100 | 5 | non mesuré | ≈ 26 s (2 pods à 5 s, 3 à 7 s, 4 à 12 s) |
-| run_500 | 5 | non mesuré | ≈ 9 s (départ à 2 pods) |
-| run_1000 | 5 | non mesuré | déjà à 5 pods, aucun nouvel événement de montée |
-| run à chaud (500 utilisateurs, révision 2.0.0) | 5 | non mesuré | ≈ 7 s (départ à 1 pod : 4 pods à 5 s, 5 à 7 s) |
+| run_100 | 5 | non mesuré (metrics-server absent) | ≈ 26 s (2 pods à 5 s, 3 à 7 s, 4 à 12 s) |
+| run_500 | 5 | non mesuré (metrics-server absent) | ≈ 9 s (départ à 2 pods) |
+| run_1000 | 5 | non mesuré (metrics-server absent) | déjà à 5 pods, aucun nouvel événement de montée |
+| run à chaud (500 utilisateurs, révision 2.0.0) | 5 | ≈ 915 m (≈ 92 % de la limite d'1 CPU, mesure du run de contrôle) | ≈ 7 s (départ à 1 pod : 4 pods à 5 s, 5 à 7 s) |
 
 Dès le run 100 (≈ 460 req/s pour une cible effective de 140 req/s par pod), l'autoscaler monte jusqu'au maximum de 5 pods, au-delà de ce que le débit moyen exige : la réaction à la montée brutale est forte. La réduction commence avant la fin du run (5→4 à 12 s de la fin) puis se poursuit par paliers (4→3 à +38 s, 3→2 à +55 s après la fin).
 
@@ -51,7 +51,7 @@ Scale-to-zero : avant les tests, le service était à 0 pod (`NoTraffic`). Le pr
 - Cible de l'autoscaler : le maximum de 5 pods est atteint dès 460 req/s ; une cible plus haute, ou la métrique de concurrence, éviterait de sur-dimensionner. Il faudrait aussi tester un `maxReplicas` plus élevé, puisque 5 pods ont tenu 2400 req/s à chaud.
 - Plusieurs workers uvicorn par pod : l'image n'en lance qu'un, c'est le goulot probable d'un pod.
 - `minReplicas: 1` en production : le démarrage à froid de 9 s est trop long pour un parcours de demande de crédit.
-- Installer ou réparer metrics-server pour mesurer le CPU, non mesuré ici.
+- CPU : sous charge, chaque pod tourne à 86-97 % de sa limite d'1 CPU (≈ 915 m en moyenne, ≈ 415 req/s par pod), alors que la mémoire reste à ≈ 100-135 Mi. Le worker uvicorn unique est donc saturé : augmenter le nombre de workers et la limite CPU, ou baisser la cible de l'autoscaler, serait plus efficace que de monter `maxReplicas`.
 - Batching des requêtes (l'API accepte jusqu'à 1000 demandes par appel) et automatisation du canary (Modules 6 et 7).
 - Comprendre pourquoi le débit varie du simple au double (1200 contre 2400 req/s) selon l'état du système.
 
