@@ -15,9 +15,15 @@ L'image FastAPI + ONNX Runtime du Lab 4 est servie par KServe 0.21 en mode Knati
 | run_500 | 211160 | 1194.9 | 200 | 330 | 740 | 0.00 |
 | run_1000 | 216670 | 1226.9 | 590 | 870 | 1800 | 0.02 |
 
-Le run 100 a tourné avec un processus Locust, les runs 500 et 1000 avec quatre. Les rares erreurs du run 1000 sont des 502 (33 sur 216 670).
+Le run 100 a tourné avec un processus Locust, les runs 500 et 1000 avec quatre. Les rares erreurs du run 1000 sont des 502 (33 sur 216 670). Ces trois runs ont été faits à la suite, sur la révision 1.0.0, juste après un démarrage à froid.
 
-Point de saturation : entre 500 et 1000 utilisateurs, le débit n'augmente que de 3 % (1195 → 1227 req/s) alors que le P50 triple et que le P99 passe de 740 ms à 1,8 s : la charge supplémentaire ne fait qu'allonger les files d'attente. Cependant, deux runs de 500 utilisateurs réalisés ensuite (hors CSV, sur la révision 2.0.0, 5 pods) ont atteint 1969 et 2143 req/s sans erreur, avec un P50 de 12 et 22 ms. Ce plateau de 1200 req/s n'est donc pas une limite fixe du service : il dépend de l'état de l'ensemble au moment du test. La cause n'a pas été identifiée.
+Run supplémentaire « à chaud », sur la révision 2.0.0 (1 pod au départ), 1000 utilisateurs pendant 3 minutes :
+
+| Run | Requêtes | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Erreurs (%) |
+|---|---|---|---|---|---|---|
+| warm_1000 | 427712 | 2432.0 | 210 | 300 | 350 | 0.00 |
+
+Point de saturation : sur les trois premiers runs, le débit n'augmente que de 3 % entre 500 et 1000 utilisateurs (1195 → 1227 req/s) alors que le P50 triple et que le P99 passe de 740 ms à 1,8 s : la charge supplémentaire ne fait qu'allonger les files d'attente. Mais le run à chaud atteint 2432 req/s avec le même nombre de pods maximum (5), sans erreur, et un P99 de 350 ms. Deux autres runs de 500 utilisateurs (hors CSV) ont fait 1969 et 2143 req/s. Le plateau de 1200 req/s n'est donc pas une limite fixe du service : il dépend de l'état du système au moment du test (révision, démarrage à froid, charge de la machine). La cause exacte n'a pas été identifiée.
 
 ## 3. Scale-up observé
 
@@ -25,28 +31,29 @@ Source : événements Kubernetes du namespace `scoring` (heure UTC). Le CPU n'a 
 
 | Run | Pods (max observé) | CPU moyen par pod | Temps pour atteindre ce nombre de pods |
 |---|---|---|---|
-| run_100 | 5 | non mesuré | ≈ 26 s (2 pods à 5 s, 4 pods à 12 s) |
+| run_100 | 5 | non mesuré | ≈ 26 s (2 pods à 5 s, 3 à 7 s, 4 à 12 s) |
 | run_500 | 5 | non mesuré | ≈ 9 s (départ à 2 pods) |
-| run_1000 | 5 | non mesuré | déjà à 5, aucun nouvel événement de montée |
+| run_1000 | 5 | non mesuré | déjà à 5 pods, aucun nouvel événement de montée |
+| run à chaud (500 utilisateurs, révision 2.0.0) | 5 | non mesuré | ≈ 7 s (départ à 1 pod : 4 pods à 5 s, 5 à 7 s) |
 
-Dès le run 100 (≈ 460 req/s pour une cible de 140 req/s par pod), l'autoscaler va jusqu'au maximum de 5 pods : le mode « panique » de Knative semble réagir fortement à la montée brutale. Après le run, la réduction se fait par paliers (5→4 puis 3 puis 2 en ≈ 70 s). Sur un run à chaud (révision 2.0.0, 1 pod au départ), 5 pods sont atteints en 6 s.
+Dès le run 100 (≈ 460 req/s pour une cible effective de 140 req/s par pod), l'autoscaler monte jusqu'au maximum de 5 pods, au-delà de ce que le débit moyen exige : la réaction à la montée brutale est forte. La réduction commence avant la fin du run (5→4 à 12 s de la fin) puis se poursuit par paliers (4→3 à +38 s, 3→2 à +55 s après la fin).
 
-Scale-to-zero : avant les tests, le service était à 0 pod (`NoTraffic`) ; le délai exact avant retour à 0 n'a pas été mesuré. Démarrage à froid : 9,24 s pour le premier appel, 0,006 s pour le suivant.
+Scale-to-zero : avant les tests, le service était à 0 pod (`NoTraffic`). Le premier événement de retour à 0 après le run 1000 date de ≈ 90 s après sa fin ; la valeur est indicative, Kubernetes agrège ces événements. Démarrage à froid : 9,24 s pour le premier appel, 0,006 s pour le suivant.
 
 ## 4. Analyse canary
 
 - Répartition observée sur 200 requêtes : 185 × 1.0.0 / 15 × 2.0.0.
 - Le split est cohérent avec 90/10 : l'attendu est 180/20, soit un écart de 5 requêtes. L'écart-type d'un tirage binomial à 10 % sur 200 requêtes est d'environ 4,2 : la valeur observée est à environ 1,2 écart-type de l'attendu, donc normale.
-- Décision : promotion à 100 %. La v2 contient le même modèle (v13, même seuil) et la même logique de prédiction, la seule différence est la route `/version` : elle répond `2.0.0` et la révision passe `Ready`. Cette décision est manuelle (`kubectl patch`), prise sans comparaison automatique des métriques entre versions.
+- Décision : promotion à 100 %. La v2 contient le même modèle (v13, même seuil) et la même logique de prédiction, la seule différence est la route `/version`, qui répond `2.0.0`. Cette décision est manuelle (`kubectl patch`), prise sans comparaison automatique des métriques entre versions.
 
 ## 5. Points d'amélioration
 
-- Cible de l'autoscaler : le maximum de 5 pods est atteint dès 460 req/s ; une cible plus haute, ou la métrique de concurrence, éviterait de sur-dimensionner. Il faudrait aussi tester un `maxReplicas` plus élevé, puisque 5 pods suffisent pour ≈ 2000 req/s à chaud.
+- Cible de l'autoscaler : le maximum de 5 pods est atteint dès 460 req/s ; une cible plus haute, ou la métrique de concurrence, éviterait de sur-dimensionner. Il faudrait aussi tester un `maxReplicas` plus élevé, puisque 5 pods ont tenu 2400 req/s à chaud.
 - Plusieurs workers uvicorn par pod : l'image n'en lance qu'un, c'est le goulot probable d'un pod.
 - `minReplicas: 1` en production : le démarrage à froid de 9 s est trop long pour un parcours de demande de crédit.
-- Installer ou réparer metrics-server pour mesurer le CPU (non mesuré ici) et rendre les observations d'autoscaling complètes.
+- Installer ou réparer metrics-server pour mesurer le CPU, non mesuré ici.
 - Batching des requêtes (l'API accepte jusqu'à 1000 demandes par appel) et automatisation du canary (Modules 6 et 7).
-- Comprendre pourquoi le débit mesuré varie du simple au double (1200 contre 2000 req/s) selon les runs.
+- Comprendre pourquoi le débit varie du simple au double (1200 contre 2400 req/s) selon l'état du système.
 
 ## 6. Comparatif des serveurs
 
