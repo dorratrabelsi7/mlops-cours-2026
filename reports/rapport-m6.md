@@ -113,6 +113,12 @@ optimisée par les caches de couches Docker.
 
 ## 6. Captures d'écran
 
+![Argo CD : Applications Synced et Healthy](m6/argocd.png)
+
+![Run CT réussi dans KFP, avec le rapport de la gate](m6/kfp-run.png)
+
+![Onglet Actions : runs CI scoring verts](m6/actions.png)
+
 
 
 
