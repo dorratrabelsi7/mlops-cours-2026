@@ -118,3 +118,6 @@ def predict(req: PredictRequest):
             Prediction(probability=float(p), prediction=int(p >= THRESHOLD)) for p in proba
         ],
     )
+
+
+# Lab 6 : cette version est déployée par Argo CD (git push)
