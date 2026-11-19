@@ -26,9 +26,7 @@ def main() -> None:
 
     proba = model.predict_proba(X_test)[:, 1]
     metrics = compute_metrics(cfg, y_test, proba, threshold)
-    tn, fp, fn, tp = confusion_matrix(
-        y_test, (proba >= threshold).astype(int)
-    ).ravel()
+    tn, fp, fn, tp = confusion_matrix(y_test, (proba >= threshold).astype(int)).ravel()
 
     report = {
         **{k: round(float(v), 4) for k, v in metrics.items()},
@@ -38,9 +36,7 @@ def main() -> None:
     }
 
     METRICS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    METRICS_JSON.write_text(
-        json.dumps(report, indent=2) + "\n", encoding="utf-8"
-    )
+    METRICS_JSON.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"{cfg.primary_metric} = {report[cfg.primary_metric]} -> {METRICS_JSON}")
 
 
